@@ -23,16 +23,6 @@ MongoClient.connect(config.mongo_url, function(err, db) {
     
 });
 
-MongoClient.connect(config.mongo_url, function(err, db) {
-    assert.equal(null, err);
-    console.log("Retrieving data from Mongo.");
-
-    // Search For Data
-    findFungi(db, function() { 
-        db.close();
-    });
-});
-
 // Mongo Insert
 var insertDocument = function(db, callback) {
 
@@ -49,15 +39,15 @@ var insertDocument = function(db, callback) {
 };
 
 // Mongo Find
-var findFungi = function(db, callback) {
-    var cursor = db.collection('fungi').find();
+findFungi = function(db, uuid, callback) {
+    var cursor = db.collection('fungi').find({"idigbio_uuid": uuid});
 
-    cursor.each(function(err, doc) {
+    /*cursor.each(function(err, doc) {
         assert.equal(err, null);
 
-        if(doc != null) { console.dir(doc); }
+        if(doc != null) { console.log('returning doc: ' + doc); return doc; }
         else { callback(); }
-    });
+    });*/
 };
 
 var app = express();
@@ -74,5 +64,6 @@ server = app.listen(config.port, function() {
 module.exports = {
     app: app,
     server: server,
-    config: config
+    config: config,
+    MongoClient: MongoClient
 }
