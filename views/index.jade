@@ -1,0 +1,22 @@
+extends layout 
+
+block content
+
+  h1= title
+
+  #search
+
+  p Look up a iDigBio API URL
+
+  //form(id="search_form", method="post", aciton="/")
+      input(id="search_string", name="search_string", type="text", placeholder="iDigBio Search String ...", class="fat")
+
+  #results
+      h3 Search Results
+
+      #json
+          p JSON-LD Blob data
+          div(style="text-align: left"): pre: #{json}
+
+      #html
+          p html data

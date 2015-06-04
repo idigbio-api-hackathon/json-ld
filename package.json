@@ -1,0 +1,35 @@
+{
+  "name": "idigbio-jsonld",
+  "version": "1.0.0",
+  "description": "jsonld wrapper for iDigBio Search API results",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jlauters/idigbio-jsonld.git"
+  },
+  "keywords": [
+    "JSON",
+    "Linked",
+    "Data",
+    "iDigBio"
+  ],
+  "author": "Jon Lauters",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jlauters/idigbio-jsonld/issues"
+  },
+  "homepage": "https://github.com/jlauters/idigbio-jsonld#readme",
+  "dependencies": {
+    "cassandra-driver": "node_modules/cassandra-driver",
+    "express": "^4.12.4",
+    "jade": "^1.10.0",
+    "jsonld": "node_modules/jsonld",
+    "mongodb": "^2.0.33",
+    "node.extend": "^1.1.5",
+    "request": "^2.57.0",
+    "xml2js": "^0.4.9"
+  }
+}
