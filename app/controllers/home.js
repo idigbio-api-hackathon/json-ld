@@ -5,7 +5,7 @@ var request = require('request'),
     jsonld = require('jsonld'),
     MongoClient = require('mongodb').MongoClient,
     ObjectID = require('mongodb').ObjectID,
-     assert = require('assert'),
+    assert = require('assert'),
     extend = require('util')._extend;
 
 var onErr = function(err, callback) {
@@ -19,6 +19,9 @@ function syntaxHighlight(json) {
     if(typeof json != 'string') {
         json = JSON.stringify(json, undefined, 2);
     }
+
+    console.log('syntax json: ');
+    console.log(json);
 
     json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
@@ -40,52 +43,104 @@ function syntaxHighlight(json) {
 }
 
 
-var processData = function(res) {
+var processData = function(res, sci_name) {
 
     var normalizedData = {};
     normalizedData.items = [];
-
+  
+    var ld_fields;
     var ld_data = JSON.parse(res);
 
-    if(ld_data.items) {
-        for(var ld_item in ld_data.items) {
-        
-            // TODO - What fields actually matter here
-            // How to get them if / when not provided in 
+    MongoClient.connect('mongodb://localhost:27017/test', function(err, db) {
+        assert.equal(null, err);
 
-            // TODO - get MycoBank data to pull links
+        var gbif_ids = [];
 
-            var ld_fields = { "@context": "https://schema.org/",
-                          "@type": "https://schema.org/ListItem" 
-            };
+        sci_name = sci_name[0].toUpperCase() + sci_name.slice(1);
 
-            // not sure this is needed
-            jsonld.compact(ld_data.items[ld_item], ld_fields, function(err, compacted) {
-                if(null == err) {
-                    var merged = extend(ld_data.items[ld_item], compacted);
-                    normalizedData.items.push(merged);
+        db.collection('gbif').find( {scientificName: sci_name} ).toArray(function(err,docs) {
+            if(!err) {
+                db.close();
+
+                var intCount = docs.length;
+                if(intCount > 0) {
+                    for(var i = 0; i < intCount;) {
+                        var gbif_id = docs[i].matchTaxonID
+
+
+                        gbif_ids.push(gbif_id);
+
+                         i = i+1;
+                    }
                 }
-            }); 
-
-            var merged = extend(ld_data.items[ld_item], ld_fields);
-                normalizedData.items.push(merged);
-
-        }
-    } else {
-
-        // Get our ID from Mongo
-
-        var ld_fields = { "@context": "https://schema.org/", "@type": "https://schema.org/ListItem"};
-     
-        jsonld.compact(ld_data, ld_fields, function(err, compacted) {
-            if(null == err) {
-                var merged = extend(ld_data, compacted);
-                normalizedData.items.push(merged);
+            }  else {
+                onErr(err, callback);
             }
-        });
 
-        var merged = extend(ld_data, ld_fields);
-            normalizedData.items.push(merged);
+           console.log('gbif_ids');
+           console.log(gbif_ids);
+
+           // Now iterate our stuff?
+           var ld_data = JSON.parse(res);
+           for(var ld_item in ld_data.items) {
+
+               console.log('ld item: ');
+               console.log(ld_data.items[ld_item]);
+
+               // Mocked up JSON-LD fields we want
+               var global_names_id = null;
+               var global_names_url = null;
+               var gbif_id = gbif_ids[0];
+               var gbif_url = null;
+               var gbif_img_url = null;
+               var genbank_uuid = null;
+               var genbank_url = null;
+
+               ld_fields = { "iDigBio-LD": {
+                   "@GlobalNamesID": global_names_id,
+                   "@GlobalNames_URL" : "http://gni.globalnames.org/name_strings/" + global_names_id,
+                   "@GBIFID" : gbif_id,
+                   "@GBIF": "http://gbif.org/species/" + gbif_id,
+                   "@GBIFImage_URL": "http://api.globalbioticinteractions.org/images/GBIF:" + gbif_id,
+                   "@GenBank_ID": genbank_uuid,
+                   "@GenBank_URL": genbank_url, 
+                  
+               }};
+
+               console.log('MONGO LD ITEMS');
+               console.log(ld_fields);
+
+
+               var merged = extend(ld_data.items[ld_item], ld_fields);
+                   normalizedData.items.push(merged);
+
+           }
+
+           console.log('find normal');
+           console.log(normalizedData);
+
+        }); // end collection.find
+
+    });
+
+    for(var ld_item in ld_data.items) {
+
+                // Mocked up JSON-LD fields we want
+                var global_names_id = '813583ad-c364-5c15-b01a-43eaa1446fee';
+                var gbif_id = 215;
+
+                ld_fields = { "iDigBio-LD": {
+                    "@GlobalNamesID": global_names_id,
+                    "@GlobalNames_URL" : "http://gni.globalnames.org/name_strings/" + global_names_id,
+                    "@GBIFID" : gbif_id,
+                    "@GBIF": "http://gbif.org/species/" + gbif_id,
+                    "@GBIFImage_URL": "http://api.globalbioticinteractions.org/images/GBIF:" + gbif_id,
+                }};
+
+
+                var merged = extend(ld_data.items[ld_item], ld_fields);
+                    normalizedData.items.push(merged);
+
     }
 
     return normalizedData;
@@ -147,14 +202,17 @@ module.exports = function(app, config) {
                                     }
 
                                     // Set MycoBank #
-                                    mycobank_id = JSON.parse(strJson);
+                                    mycobank_id = JSON.parse(strJson).mycobank_id;
 
+                                    // TODO: remove hardcoding ( but it makes it work )
                                     var myco_options = {
-                                        host: req.get('host'),
-                                        path: '/mycolookup/' + mycobank_id
+                                        host: 'localhost',
+                                        port: 3000,
+                                        path: '/mycolookup/' + mycobank_id,
+                                        method: 'GET'
                                     };
 
-                                    var MycoRequest = http.get(options, function(myco_r) {
+                                    var MycoRequest = http.get(myco_options, function(myco_r) {
                                     
                                         var mycodata = "";
                                         myco_r.setEncoding('utf8');
@@ -163,8 +221,11 @@ module.exports = function(app, config) {
                                         });
 
                                         myco_r.on('end', function() {
-                                            console.log('mycodata return');
-                                            console.log(JSON.stringify(mycodata));
+
+                                            var ld_data = processData(pageData, mycodata);
+                                          
+                                            res.render('index', { title: 'Returned Fungi JSON-LD', json: syntaxHighlight(ld_data)  });
+                                            res.end();
                                         });
                                     });
 
@@ -174,11 +235,6 @@ module.exports = function(app, config) {
                             }
                         }); // end collection.find
                     }); 
-
-                    var ld_data = processData(pageData);
-
-                    res.render('index', { title: 'Returned Fungi JSON-LD', json: syntaxHighlight(ld_data)  });
-                    res.end();
                 });
 
             });
@@ -187,41 +243,35 @@ module.exports = function(app, config) {
         },
 
         index: function(req, res, next) {
+            res.render('index', { title: 'iDigBio JSON-LD', json: ''});
+            res.end(); 
+        },
 
-            // TODO - provide URL input for iDigBio Search API
+        sci_name: function(req, res, next) {
 
-            // TODO - Render HTML / JSON View (mocked up data
-            // TODO - Stub code to query MongoDB fro output from iDigBioLD Taxonomic Linker            
+            var sci_name = encodeURIComponent(req.params.scientific_name);
 
-            // query the iDigBio Search API
             var options = {
                 host: 'beta-search.idigbio.org',
                 port: 80,
-                path: '/v2/search/records/?rq=%7B%22scientificname%22%3A+%22puma+concolor%22%7D&limit=5',
+                path: '/v2/search/records/?rq=%7b"scientificname"%3A+"' + sci_name + '"%7D&limit=5',
                 method: 'GET'
             };
 
-            var iDIGreq = http.get(options, function(r) {
+            var iDigRequest = http.get(options, function(r) {
+                    var pageData = "";
+                    r.setEncoding('utf8');
+                    r.on('data', function(chunk) { pageData += chunk; });
+                    r.on('end', function() {         
 
-                var pageData = "";
-                r.setEncoding('utf8');
-                r.on('data', function(chunk) {
-                    pageData += chunk;
-                });
+                        var ld_data = processData(pageData, req.params.scientific_name);
 
-                // parse the JSON results and rewrap or append the JSONLD markup 
-                r.on('end', function() {
+                        res.write("<div style='text-align: left;'><pre>" + syntaxHighlight(ld_data) + "</pre></div>");
+                        res.end();
+                    });
+           });
 
-                    var ld_data = processData(pageData, req);
-
-                    //res.write(JSON.stringify(ld_data));
-
-                    res.render('index', { title: 'iDigBio JSONLD', json: ld_data });
-                    res.end();
-                });
-
-            });
         }
-    };
 
+    }
 };

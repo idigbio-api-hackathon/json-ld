@@ -6,10 +6,8 @@ block content
 
   #search
 
-  p Look up a iDigBio API URL
-
-  //form(id="search_form", method="post", aciton="/")
-      input(id="search_string", name="search_string", type="text", placeholder="iDigBio Search String ...", class="fat")
+  form(id="search_form", method="post", action="/")
+      input(id="search_string", name="search_string", type="text", placeholder="iDigBio Search ( Scientific Name )  ...")
 
   #results
       h3 Search Results
@@ -17,6 +15,3 @@ block content
       #json
           p JSON-LD Blob data
           div(style="text-align: left"): pre: #{json}
-
-      #html
-          p html data

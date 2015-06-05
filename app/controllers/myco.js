@@ -12,6 +12,8 @@ module.exports = function(app, config) {
     return {
         index: function(req, res, next) {
 
+            console.log('made it to myco lookup');
+
             // Pull MycoBank Number from URL
             var myco_num = req.params.myco_num;
 
@@ -35,7 +37,8 @@ module.exports = function(app, config) {
                     console.log('MycoBank XML Response');
 
                     // TODO: Parse Myco Result for ID to pass to Cassandra Lookup table
-                    parseString(pageData, function(err, result) {
+                    parseString(pageData, {explicitArray: false},function(err, result) {
+                        console.log(result);
                         res.write(JSON.stringify(result));
                     });
 

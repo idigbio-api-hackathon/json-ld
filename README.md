@@ -1,2 +1,4 @@
 # idigbio-jsonld
-JSON-LD for iDigBio Search API
+
+Node.js JSON-LD wrapper for iDigBio Search API
+
